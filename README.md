@@ -101,3 +101,9 @@ configurado.
   [dsevilla/bdge](https://github.com/dsevilla/bdge) y datos [dsevilla/bd2-data](https://github.com/dsevilla/bd2-data).
 - Motor SQL en el navegador: [DuckDB-Wasm](https://duckdb.org/docs/api/wasm/overview) y
   [CodeMirror 5](https://codemirror.net/5/).
+
+## Documentación
+
+- `doc/respuesta.md` — respuesta de ejemplo: los diez ejercicios del itinerario con la consulta que cierra cada uno.
+- `make -C doc` genera `doc/respuesta.pdf` con `doc/md2pdf.py` (solo necesita `reportlab`, sin LaTeX ni pandoc).
+
