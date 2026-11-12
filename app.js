@@ -753,8 +753,15 @@ function syncWorksheet(worksheetRef) {
   worksheetRef.badge.className = "status " + (state.done ? "ready" : "idle");
   worksheetRef.addButton.hidden = state.done;
   worksheetRef.solutionButton.hidden = !state.done;
-  if (state.done && worksheetRef.solutionBox) {
+  // La etiqueta y la visibilidad se derivan de la caja real, no solo del flag
+  // guardado: si la caja aún no se ha creado, el botón siempre ofrece «Ver…».
+  if (worksheetRef.solutionBox) {
     worksheetRef.solutionBox.hidden = !state.solutionRevealed;
+    worksheetRef.solutionButton.textContent = state.solutionRevealed
+      ? "Ocultar la solución de referencia"
+      : "Ver la solución de referencia";
+  } else {
+    worksheetRef.solutionButton.textContent = "Ver la solución de referencia";
   }
 
   rows.forEach(function (rowEl, rowIndex) {
@@ -798,21 +805,27 @@ function addAttempt(exercise, worksheetRef) {
 function revealSolution(exercise, worksheetRef) {
   const state = exerciseState(exercise.id);
   if (!state.done) return;
-  state.solutionRevealed = !state.solutionRevealed;
-  saveStore();
   if (!worksheetRef.solutionBox) {
     const box = el("details", "solution-box");
     box.append(el("summary", null, "Solución de referencia del banco de ejercicios"));
     const pre = el("pre", "materialization-code");
-    pre.append(el("code", null, exercise.solution || ""));
+    pre.append(el("code", null, exercise.solution || "(Este ejercicio no trae solución de referencia.)"));
     box.append(pre);
     box.append(el("p", "settings-note", "Compárala con la tuya: ¿qué hace igual y qué hace distinto? "
       + "Anótalo si tu solución es más legible o más eficiente."));
     worksheetRef.section.append(box);
     worksheetRef.solutionBox = box;
   }
-  worksheetRef.solutionBox.open = state.solutionRevealed;
-  worksheetRef.solutionButton.textContent = state.solutionRevealed
+  // El estado que manda es el del propio <details>: el primer clic en una sesión
+  // siempre ABRE (el flag guardado en localStorage puede venir de una sesión
+  // anterior y, al no existir aún la caja, el toggle dejaba el desplegable cerrado
+  // y parecía que el botón no hacía nada).
+  const open = !worksheetRef.solutionBox.open;
+  state.solutionRevealed = open;
+  saveStore();
+  worksheetRef.solutionBox.hidden = false;
+  worksheetRef.solutionBox.open = open;
+  worksheetRef.solutionButton.textContent = open
     ? "Ocultar la solución de referencia"
     : "Ver la solución de referencia";
 }
