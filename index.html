@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Actividad con IA generativa · SQL · BDGE</title>
+  <meta name="description" content="Actividad de la asignatura Bases de Datos a Gran Escala (Máster en Big Data, UMU): resolver consultas SQL con un tutor de IA generativa que diagnostica los errores.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/theme/material-darker.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/mode/sql/sql.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="page-header">
+    <div class="header-inner">
+      <p class="eyebrow">BDGE · Bases de Datos a Gran Escala · Máster en Big Data (UMU/USC)</p>
+      <h1>Consultas SQL con un tutor de IA generativa</h1>
+      <p class="intro">Resuelve cada consulta <strong>primero tú</strong>, sin IA. Después pregunta a la IA
+        qué has hecho mal, y anota su sugerencia. Cuando el comprobador dé tu respuesta por buena,
+        el ejercicio se cierra: no se puede seguir intentando.</p>
+      <p class="intro intro-small">DuckDB-Wasm se ejecuta en tu navegador sobre Stack Overflow en español.
+        Tus respuestas, tus prompts y las respuestas de la IA se guardan solo en este navegador.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="activity-panel" aria-labelledby="activity-title">
+      <div class="activity-top">
+        <h2 id="activity-title">Cómo funciona la actividad</h2>
+        <span id="progress-badge" class="status loading" role="status" aria-live="polite">0 de 0 ejercicios</span>
+      </div>
+      <ol class="activity-steps">
+        <li><strong>Columna 1 — Mi respuesta.</strong> Escribe tu consulta sin ayuda de la IA y ejecútala.
+          Cuando creas que está bien, pulsa <em>Comprobar</em>.</li>
+        <li><strong>Columna 2 — Lo que le pregunto a la IA.</strong> Si falla, pulsa
+          <em>Preparar pregunta</em>: la página redacta un prompt con el enunciado, el esquema,
+          tu consulta y el diagnóstico del comprobador. Léelo, ajústalo si quieres y envíalo.</li>
+        <li><strong>Columna 3 — Lo que me sugiere la IA.</strong> Pega aquí su respuesta
+          (o llega sola si conectas un modelo).</li>
+        <li><strong>Nuevo intento.</strong> Pulsa <em>Añadir otra respuesta</em> para abrir una fila nueva,
+          corrige tu consulta y vuelve a comprobar. Cada fila guarda el prompt y la respuesta que la originó.</li>
+      </ol>
+      <p class="activity-rule">Regla de la actividad: la IA <strong>no debe darte la consulta resuelta</strong>.
+        El prompt que genera la página se lo pide expresamente. Si te la da igualmente, no la copies:
+        pídele que te explique el error y vuelve a intentarlo.</p>
+    </section>
+
+    <details class="settings-panel" id="settings-panel">
+      <summary><strong>Alumno y conexión con la IA</strong> · modo copiar/pegar o modelo conectado</summary>
+      <div class="settings-body">
+        <div class="settings-grid">
+          <label class="field">
+            <span>Nombre y apellidos (para el registro que exportes)</span>
+            <input id="student-name" type="text" autocomplete="name" placeholder="Nombre Apellido1 Apellido2">
+          </label>
+          <label class="field">
+            <span>Modo de uso de la IA</span>
+            <select id="ai-mode">
+              <option value="copy">Copiar y pegar (sin clave)</option>
+              <option value="api">Modelo conectado (compatible OpenAI)</option>
+            </select>
+          </label>
+        </div>
+        <div id="api-settings" class="settings-grid" hidden>
+          <label class="field">
+            <span>Endpoint (base de la API)</span>
+            <input id="api-endpoint" type="url" spellcheck="false" placeholder="https://api.openai.com/v1">
+          </label>
+          <label class="field">
+            <span>Modelo</span>
+            <input id="api-model" type="text" spellcheck="false" placeholder="gpt-4o-mini">
+          </label>
+          <label class="field">
+            <span>Clave de API</span>
+            <input id="api-key" type="password" spellcheck="false" autocomplete="off" placeholder="sk-…">
+          </label>
+          <label class="check-inline">
+            <input id="api-remember" type="checkbox">
+            <span>Recordar la clave en este navegador (si no, se olvida al cerrar la pestaña)</span>
+          </label>
+        </div>
+        <p class="settings-note" id="ai-mode-note"></p>
+        <div class="controls">
+          <button id="test-api" class="button small" type="button">Probar conexión</button>
+          <button id="export-json" class="button small" type="button">Exportar registro (JSON)</button>
+          <button id="export-md" class="button small" type="button">Exportar informe (Markdown)</button>
+          <button id="reset-all" class="button small danger" type="button">Borrar mi trabajo</button>
+        </div>
+        <p id="settings-status" class="connection-result" aria-live="polite"></p>
+      </div>
+    </details>
+
+    <section class="database-panel" aria-labelledby="database-title">
+      <div class="database-top">
+        <h2 id="database-title">Base de datos de la práctica · Stack Overflow en español</h2>
+        <span id="db-status" class="status loading" role="status" aria-live="polite">Preparando DuckDB-Wasm…</span>
+      </div>
+      <p class="database-note">
+        Las tablas <code>Posts</code>, <code>Users</code>, <code>Tags</code>, <code>Comments</code> y
+        <code>Votes</code> se materializan en tu navegador desde los Parquet de
+        <a href="https://github.com/dsevilla/bd2-data/tree/main/es.stackoverflow/parquet" target="_blank" rel="noreferrer">dsevilla/bd2-data</a>.
+        Mientras descargan puedes trabajar con la muestra pequeña.
+      </p>
+      <div class="controls">
+        <button id="load-real" class="button primary" type="button" disabled>Cargar Parquet completos</button>
+        <button id="load-demo" class="button" type="button" disabled>Volver a la muestra pequeña</button>
+        <label class="button file-label">Abrir Parquet locales
+          <input id="local-file" type="file" accept=".parquet" multiple disabled>
+        </label>
+      </div>
+      <p id="connection-result" class="connection-result" aria-live="polite"></p>
+      <details class="schema-panel">
+        <summary>Esquema de las tablas (lo que verá la IA cuando le preguntes)</summary>
+        <pre id="schema-preview" class="materialization-code">Se rellena al cargar la base…</pre>
+      </details>
+    </section>
+
+    <div id="sandbox" class="sandbox-wrap"></div>
+
+    <section class="practice-page" aria-labelledby="practice-page-title">
+      <header class="practice-page-heading">
+        <h2 id="practice-page-title">Itinerario de la actividad</h2>
+        <p id="practice-page-description">Diez ejercicios de las sesiones 1 y 2, en orden de dificultad creciente.</p>
+        <p id="editor-mode-note" class="connection-result" aria-live="polite"></p>
+      </header>
+      <div id="exercise-list" class="exercise-list"></div>
+    </section>
+
+    <details class="extra-bank" id="extra-bank">
+      <summary><strong>Banco de ejercicios completo</strong> · el resto de la práctica de la asignatura (opcional)</summary>
+      <div id="exercise-list-extra" class="exercise-list"></div>
+    </details>
+
+    <section class="activity-panel closing-panel" aria-labelledby="closing-title">
+      <div class="activity-top">
+        <h2 id="closing-title">Cierre de la actividad</h2>
+      </div>
+      <p class="settings-note">Responde antes de exportar el registro: estas tres respuestas son la parte de
+        la entrega que no se puede automatizar.</p>
+      <div class="reflection-grid">
+        <label class="field">
+          <span>1 · Un error que la IA te ayudó a ver y que no habías detectado tú.</span>
+          <textarea id="reflection-1" class="reflection-area" rows="3"
+            placeholder="Por ejemplo: no sabía que HAVING filtra grupos y WHERE filtra filas…"></textarea>
+        </label>
+        <label class="field">
+          <span>2 · Una respuesta de la IA que tuviste que descartar o corregir, y por qué.</span>
+          <textarea id="reflection-2" class="reflection-area" rows="3"
+            placeholder="Por ejemplo: me propuso una función que no existe en DuckDB…"></textarea>
+        </label>
+        <label class="field">
+          <span>3 · ¿Qué harías distinto la próxima vez que te atranques con una consulta?</span>
+          <textarea id="reflection-3" class="reflection-area" rows="3"></textarea>
+        </label>
+      </div>
+    </section>
+
+    <footer>
+      <p>Actividad docente de la asignatura BDGE (curso 2026-27). Basada en la
+        <a href="https://dsevilla.github.io/bdge/practice-web/sql/" target="_blank" rel="noreferrer">práctica SQL en el navegador</a>
+        del mismo curso. Todo se procesa en tu navegador: ni las consultas ni tus prompts salen de aquí
+        salvo que pulses «Copiar y abrir ChatGPT» o conectes un modelo.</p>
+    </footer>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
