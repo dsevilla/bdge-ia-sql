@@ -94,8 +94,17 @@ def make_table(rows, styles, available_width):
     for r in data:
         while len(r) < ncols:
             r.append(Paragraph("", styles["cell"]))
-    col_width = available_width / ncols
-    t = Table(data, colWidths=[col_width] * ncols, repeatRows=1, hAlign="LEFT")
+    # Ancho proporcional al contenido (raíz cuadrada, para que una celda muy larga
+    # no se coma la tabla), con topes del 8 % y el 55 % por columna.
+    medias = []
+    for c in range(ncols):
+        largos = [len(str(r[c])) for r in rows]
+        medias.append(max(1.0, (sum(largos) / len(largos)) ** 0.5))
+    total = sum(medias)
+    pesos = [min(0.55, max(0.08, m / total)) for m in medias]
+    escala = sum(pesos)
+    widths = [available_width * p / escala for p in pesos]
+    t = Table(data, colWidths=widths, repeatRows=1, hAlign="LEFT")
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a3a5c")),
         ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#9aa7b4")),
